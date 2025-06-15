@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, User, ShoppingCart, ChevronDown, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import CartDrawer from "./Cart/CartDrawer";
+import axios from "axios";
 
 import {
   DropdownMenu,
@@ -14,28 +16,105 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const Navbar = () => {
+interface NavbarProps {
+  artistName?: string;
+}
+
+// Interfaz para el artista basada en tu estructura de DB
+interface Artist {
+  _id: string;
+  id: string;
+  nombre: string;
+  descripcion: string;
+  imagenes: {
+    foto_perfil: string;
+    imagen_fondo: string;
+    // ... otros campos de imágenes
+  };
+}
+
+const Navbar = ({ artistName }: NavbarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [isLoadingArtists, setIsLoadingArtists] = useState(false);
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const { getTotalItems } = useCart();
 
-  const artists = [
-    "JENNIE",
-    "Ariana Grande", 
-    "Olivia Rodrigo",
-    "Doja Cat",
-    "DPR IAN",
-    "Pink Pantheress",
+  // Productos de prueba para búsqueda
+  const testProducts = [
+    { id: 1, title: "Eternal Sunshine (Lp-Vinilo)", description: "Vinilo 180g con sus últimos sencillos.", price: "$32.97", stock: 15 },
+    { id: 2, title: "To Hell With It - CD", description: "CD con booklet de 24 páginas", price: "$14.97", stock: 25 },
+    { id: 3, title: "Planet Her - Vinyl", description: "Vinilo 150g con música pop.", price: "$35.99", stock: 8 },
+    { id: 4, title: "TYLA (Lp - Vinilo)", description: "Vinilo 150g con música afro pop.", price: "$28.83", stock: 12 },
+    { id: 5, title: "Moodswings In This Order - CD", description: "CD con el último lanzamiento.", price: "$29.99", stock: 18 },
+    { id: 6, title: "SOUR - CD", description: "CD con un booklet.", price: "$16.99", stock: 22 },
+    { id: 7, title: "Tyler Cole Vinyl", description: "Vinilo 180g con música alternativa.", price: "$24.99", stock: 10 },
+    { id: 8, title: "SOLO - Single CD", description: "CD del single debut del artista.", price: "$12.99", stock: 30 }
   ];
 
-  const merchItems = [
-    "Eternal Sunshine (Lp-Vinilo)",
-    "To Hell With It - CD",
-    "Moodswings In This Order - CD", 
-    "Tyler Cole Vinyl",
+  const merchCategories = [
+    { id: 'vinilo', name: 'Vinilos', keyword: 'vinilo' },
+    { id: 'cd', name: 'CDs', keyword: 'cd' },
+    { id: 'album', name: 'Álbumes', keyword: 'album' }
   ];
+
+  // Función para cargar artistas desde la API
+  const fetchArtists = async () => {
+    setIsLoadingArtists(true);
+    try {
+      const response = await axios.get("http://localhost:5000/api/artists");
+      setArtists(response.data);
+    } catch (error) {
+      console.error('Error fetching artists:', error);
+      // Opcional: mostrar un toast o mensaje de error al usuario
+    } finally {
+      setIsLoadingArtists(false);
+    }
+  };
+
+  // Cargar artistas al montar el componente
+  useEffect(() => {
+    fetchArtists();
+  }, []);
+
+  // Función para manejar búsqueda
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      const results = testProducts.filter(product => 
+        product.title.toLowerCase().includes(query.toLowerCase()) ||
+        product.description.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(results);
+      setShowResults(true);
+    } else {
+      setSearchResults([]);
+      setShowResults(false);
+    }
+  };
+
+  // Función para manejar click en resultado de búsqueda
+  const handleResultClick = (product: any) => {
+    navigate(`/merch/${product.id}`);
+    setShowResults(false);
+    setSearchQuery("");
+  };
+
+  // Función para navegar a la página del artista
+  const handleArtistClick = (artist: Artist) => {
+    // Usando _id como en tu ejemplo funcional
+    navigate(`/artists/${artist._id}`);
+  };
+
+  // Función para manejar el filtro de merch por descripción
+  const handleMerchFilter = (category: { id: string; name: string; keyword: string }) => {
+    // Navegar a la página de merch con el parámetro de filtro
+    navigate(`/merch?filter=${category.keyword}`);
+  };
 
   const handleLogout = () => {
     logout();
@@ -49,25 +128,51 @@ const Navbar = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex-shrink-0">
               <Link to="/">
-                <h1 className="text-2xl font-bold text-white">ATELIER STORE</h1>
+                <h1 className="text-2xl font-bold text-white">
+                  ATELIER STORE
+                  {artistName && (
+                    <span className="text-lg font-normal text-purple-300 ml-2">
+                      - {artistName}
+                    </span>
+                  )}
+                </h1>
               </Link>
             </div>
 
             <div className="flex-1 max-w-md mx-8">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <input
+                <Input
                   type="text"
-                  placeholder="Buscar productos..."
+                  placeholder="Buscar merch..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  onChange={(e) => handleSearch(e.target.value)}
+                  onFocus={() => searchQuery && setShowResults(true)}
+                  onBlur={() => setTimeout(() => setShowResults(false), 200)}
+                  className="pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
+                {showResults && searchResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-slate-800 border border-slate-600 rounded-b-lg shadow-lg mt-1 max-h-60 overflow-y-auto z-50">
+                    {searchResults.map((product, index) => (
+                      <div
+                        key={index}
+                        className="px-4 py-2 hover:bg-slate-700 cursor-pointer text-white flex items-center transition-colors"
+                        onClick={() => handleResultClick(product)}
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium">{product.title}</div>
+                          <div className="text-sm text-slate-400">{product.description}</div>
+                          <div className="text-sm text-purple-300 font-semibold">{product.price}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex items-center space-x-6">
-              {/* Menú de Artistas */}
+              {/* Menú de Artistas - Ahora dinámico */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="text-white hover:text-purple-300 flex items-center gap-1">
@@ -75,23 +180,37 @@ const Navbar = () => {
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-slate-800 border-slate-700 min-w-[200px]">
-                  {artists.map((artist) => (
-                    <DropdownMenuItem 
-                      key={artist}
-                      className="text-white hover:bg-slate-700 cursor-pointer"
-                      onClick={() => navigate(`/artists/${artist.toLowerCase().replace(/\s+/g, '-')}`)}
-                    >
-                      {artist}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator className="bg-slate-600" />
-                  <DropdownMenuItem 
-                    className="text-purple-300 hover:bg-slate-700 cursor-pointer font-medium"
-                    onClick={() => navigate("/artists")}
-                  >
-                    Ver todos los artistas
-                  </DropdownMenuItem>
+                <DropdownMenuContent className="bg-slate-800 border-slate-700 w-screen max-w-sm">
+                  {isLoadingArtists ? (
+                    <div className="p-4 text-center text-slate-400">
+                      Cargando artistas...
+                    </div>
+                  ) : artists.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-1 p-2">
+                        {artists.map((artist) => (
+                          <DropdownMenuItem 
+                            key={artist._id}
+                            className="text-white hover:bg-slate-700 cursor-pointer"
+                            onClick={() => handleArtistClick(artist)}
+                          >
+                            {artist.nombre}
+                          </DropdownMenuItem>
+                        ))}
+                      </div>
+                      <DropdownMenuSeparator className="bg-slate-600" />
+                      <DropdownMenuItem 
+                        className="text-purple-300 hover:bg-slate-700 cursor-pointer font-medium"
+                        onClick={() => navigate("/artists")}
+                      >
+                        Ver todos los artistas
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <div className="p-4 text-center text-slate-400">
+                      No se encontraron artistas
+                    </div>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -103,14 +222,14 @@ const Navbar = () => {
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-slate-800 border-slate-700 min-w-[200px]">
-                  {merchItems.map((item) => (
+                <DropdownMenuContent className="bg-slate-800 border-slate-700 z-50">
+                  {merchCategories.map((category) => (
                     <DropdownMenuItem 
-                      key={item}
+                      key={category.id}
                       className="text-white hover:bg-slate-700 cursor-pointer"
-                      onClick={() => navigate("/merch")}
+                      onClick={() => handleMerchFilter(category)}
                     >
-                      {item}
+                      {category.name}
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator className="bg-slate-600" />
@@ -118,10 +237,17 @@ const Navbar = () => {
                     className="text-purple-300 hover:bg-slate-700 cursor-pointer font-medium"
                     onClick={() => navigate("/merch")}
                   >
-                    Ver todo el merch
+                    Ver toda la mercancía
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Comunidades */}
+              <Link to="/communities">
+                <Button variant="ghost" className="text-white hover:text-purple-300">
+                  Comunidades
+                </Button>
+              </Link>
 
               {/* Menú de Usuario */}
               <DropdownMenu>

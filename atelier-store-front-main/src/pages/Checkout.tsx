@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,13 +9,22 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const Checkout = () => {
   const { cartItems, getTotalPrice, clearCart } = useCart();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [orderNumber, setOrderNumber] = useState('');
+  
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -43,13 +51,14 @@ const Checkout = () => {
     return null;
   }
 
+  const [isProcessing, setIsProcessing] = useState(false);  
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setIsProcessing(true);
     // Validación básica
     if (!formData.firstName || !formData.lastName || !formData.department || !formData.province) {
       toast({
@@ -57,22 +66,29 @@ const Checkout = () => {
         description: "Por favor completa todos los campos obligatorios",
         variant: "destructive"
       });
+      setIsProcessing(false);
       return;
     }
+    setTimeout(() => {
+      const newOrderNumber = `ATL-${Date.now()}`;
+      setOrderNumber(newOrderNumber);
+      setShowConfirmation(true);
+      setIsProcessing(false);
+    }, 2000);
 
-    // Simular procesamiento de pago
-    toast({
-      title: "¡Pedido realizado!",
-      description: "Tu pedido ha sido procesado exitosamente",
-    });
-    
+  };
+  
+  const handleCloseModal = () => {
+    setShowConfirmation(false);
     clearCart();
+    setTimeout(() => {
     navigate('/');
+    }, 300); 
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900">
-      {/* Simplified Navbar */}
+      
       <nav className="bg-slate-800 border-b border-slate-700 p-4">
         <div className="max-w-7xl mx-auto flex justify-center">
           <Link to="/">
@@ -203,9 +219,11 @@ const Checkout = () => {
                   <div className="flex gap-4 pt-6">
                     <Button 
                       type="submit"
-                      className="flex-1 bg-purple-600 hover:bg-purple-700"
+                      disabled={isProcessing}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-semibold py-4 rounded-lg transition-colors"
                     >
-                      Pagar Ahora
+                      {isProcessing ? 'Procesando Pago...' : 'Procesar Pago'}
+                      
                     </Button>
                     <Button 
                       type="button"
@@ -259,6 +277,36 @@ const Checkout = () => {
           </div>
         </div>
       </main>
+      {/* Order Confirmation */}
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent className="bg-slate-800 border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-center mb-4">¡Pedido Confirmado!</DialogTitle>
+              <DialogDescription asChild>
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <p className="text-lg text-gray-300">Tu pedido ha sido procesado exitosamente</p>
+                  <p className="text-purple-400 font-semibold">Número de pedido: {orderNumber}</p>
+                  <p className="text-sm text-gray-400">
+                    Recibirás un correo electrónico con los detalles de tu pedido y el seguimiento del envío.
+                   </p>
+                  <div className="flex space-x-4 justify-center mt-6">
+                    <button
+                      onClick={handleCloseModal}
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                      >
+                      Continuar Comprando
+                    </button>
+                  </div>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+      </Dialog>  
     </div>
   );
 };

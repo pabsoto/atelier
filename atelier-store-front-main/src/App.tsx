@@ -9,8 +9,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import Checkout from "@/pages/Checkout";
-
-
+import ArtistDetail from "@/pages/ArtistDetail";
+import CommunityPage from './pages/CommunityPage';
 // Lazy loaded pages
 const Index = lazy(() => import("@/pages/Index"));
 const Login = lazy(() => import("@/pages/Login"));
@@ -46,6 +46,8 @@ const App = (): JSX.Element => {
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="*" element={<NotFound />} />
                 <Route path="/checkout" element={<Checkout />} />
+                <Route path="/artists/:id" element={<ArtistDetail />} />
+                <Route path="/community/:id" element={<CommunityPage />} />
 
               </Routes>
             </Suspense>
